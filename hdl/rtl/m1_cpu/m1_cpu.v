@@ -58,7 +58,6 @@ module m1_cpu (
   reg[31:0] if_id_addr, if_id_addrnext;                              // Addresses of the fetched opcode and of the next one
 
   // Latch 2: ID/EX
-<<<<<<< m1_cpu.v
   reg[31:0] id_ex_opcode;
   reg[31:0] id_ex_addr, id_ex_addrnext;
   reg[31:0] id_ex_addrbranch, id_ex_addrjump, id_ex_addrjr;          // Evaluated jump addresses
@@ -73,21 +72,8 @@ module m1_cpu (
   reg[4:0] id_ex_destreg;                                            // Destination register (GPR number)
   reg id_ex_desthi, id_ex_destlo;                                    // Destination register (HI/LO)
   reg[4:0] id_ex_destsyscon;                                         // Destination register (System Control)
-=======
-  reg[31:0] id_ex_pc, id_ex_pcnext;
-  reg[31:0] id_ex_pcjump, id_ex_pcbranch;                // Jump addresses
-  reg[31:0] id_ex_alu_a, id_ex_alu_b;                    // ALU operands
-  reg[4:0] id_ex_alu_func;                               // ALU operation code
-  reg id_ex_alu_signed;                                  // ALU operation is signed
-  reg id_ex_jump, id_ex_branch, id_ex_linked;            // Instruction is a jump
-  reg id_ex_load, id_ex_store;                           // Instruction is a load/store
-  reg[31:0] id_ex_store_value;                           // Store value
-  reg[4:0] id_ex_destreg;                                // Destination register (GPR)
-  reg id_ex_desthi, id_ex_destlo;                        // Destination register (HI/LO)
->>>>>>> 1.9
 
   // Latch 3: EX/MEM
-<<<<<<< m1_cpu.v
   reg[31:0] ex_mem_opcode;
   reg[31:0] ex_mem_addr, ex_mem_addrnext;
   reg[31:0] ex_mem_addrbranch, ex_mem_addrjump, ex_mem_addrjr;
@@ -100,16 +86,6 @@ module m1_cpu (
   reg[4:0] ex_mem_destreg;
   reg ex_mem_desthi, ex_mem_destlo;
   reg[4:0] ex_mem_destsyscon;
-=======
-  reg[31:0] ex_mem_pc, ex_mem_pcnext;
-  reg[31:0] ex_mem_pcjump, ex_mem_pcbranch;
-  reg[63:0] ex_mem_alu_out;                               // ALU result
-  reg ex_mem_jump, ex_mem_branch, ex_mem_linked;
-  reg ex_mem_load, ex_mem_store;
-  reg[31:0] ex_mem_store_value;
-  reg[4:0] ex_mem_destreg;                       
-  reg ex_mem_desthi, ex_mem_destlo;               
->>>>>>> 1.9
 
   // Latch 4: MEM/WB
   reg[31:0] mem_wb_opcode;
@@ -1820,7 +1796,6 @@ module m1_cpu (
         $display("INFO: CPU(%m)-EX: Execution stalled");
 
       end else begin
-<<<<<<< m1_cpu.v
 
         // If not stalled propagate values to next latches
         ex_mem_opcode      <= id_ex_opcode;
@@ -1894,22 +1869,6 @@ module m1_cpu (
 //          ex_mem_store_sel <= 4'b0000;
 
         end
-=======
-        ex_mem_pc          <= id_ex_pc;
-        ex_mem_pcnext      <= id_ex_pcnext;
-        ex_mem_pcjump      <= id_ex_pcjump;
-        ex_mem_pcbranch    <= id_ex_pcbranch;
-        ex_mem_alu_out     <= alu_result_o;
-        ex_mem_jump        <= id_ex_jump;
-        ex_mem_branch      <= id_ex_branch;
-        ex_mem_linked      <= id_ex_linked;
-        ex_mem_load        <= id_ex_load;
-        ex_mem_store       <= id_ex_store;
-        ex_mem_store_value <= id_ex_store_value;
-        ex_mem_destreg     <= id_ex_destreg;
-        ex_mem_desthi      <= id_ex_desthi;
-        ex_mem_destlo      <= id_ex_destlo;
->>>>>>> 1.9
       end
 
       /*
