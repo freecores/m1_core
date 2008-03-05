@@ -2,7 +2,6 @@
 
 # Analyze
 
-set search_path [concat [list /home/fabrizio/m1_core/hdl/rtl/m1_cpu] $search_path]
 analyze -format verilog ~/m1_core/hdl/rtl/m1_cpu/m1_alu.v
 analyze -format verilog ~/m1_core/hdl/rtl/m1_cpu/m1_cpu.v
 
