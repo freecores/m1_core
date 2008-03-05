@@ -1,8 +1,5 @@
-set_local_link_library = { umce13h210t3_tc_120V_25C.db }
-search_path = { /usr/design/techlibs/umc/design_compiler ../../../hdl/rtl/m1_cpu }
-link_library = { umce13h210t3_tc_120V_25C.db }
-target_library = { umce13h210t3_tc_120V_25C.db }
-symbol_library = { umce13h210t3.sdb }
-define_design_lib DEFAULT -path ./WORK_SYNTH
-verilogout_write_components = "FALSE"
-
+set search_path [concat [list ~] $search_path]
+set link_library [list your_library.db]
+set target_library [list your_library.db]
+set symbol_library [list your_library.sdb]
+define_design_lib work -path work
