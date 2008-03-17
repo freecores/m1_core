@@ -7,6 +7,9 @@
 #
 # Requires mipsel-linux-gcc (see Download section on srisc.com).
 
+if [ -z "$M1_ROOT" ]; then echo "***ERROR***: M1_ROOT variable is undefined, please set it and run 'source sourceme'."; exit 1; fi
+if ! [ -d "$M1_ROOT" ]; then echo "***ERROR***: directory '$M1_ROOT' does not exist, please check it and run 'source sourceme' again."; exit 1; fi
+
 cd $M1_ROOT/tests
 rm -f *.o *~ *.bin                  # Make clean
 if ( test $# != 1 ) then
