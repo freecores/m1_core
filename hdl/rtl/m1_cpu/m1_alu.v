@@ -30,7 +30,7 @@ module alu(a_i, b_i, func_i, signed_i, result_o, carry_o);
       `ALU_OP_AND: result_o = a_i & b_i;
       `ALU_OP_OR:  result_o = a_i | b_i;
       `ALU_OP_XOR: result_o = a_i ^ b_i;
-//      `ALU_OP_NOR: result_o = a_i ~| b_i;
+      `ALU_OP_NOR: result_o = a_i ~| b_i;
       `ALU_OP_SEQ: result_o = (a_i == b_i) ? 32'b1 : 32'b0;
       `ALU_OP_SNE: result_o = (a_i != b_i) ? 32'b1 : 32'b0;
       `ALU_OP_SLT: if(signed_i) result_o = ({~a_i[31],a_i[30:0]} < {~b_i[31],b_i[30:0]}) ? 32'b1 : 32'b0;
@@ -41,6 +41,7 @@ module alu(a_i, b_i, func_i, signed_i, result_o, carry_o);
                    else result_o = 32'b0;                        
       `ALU_OP_SGE: if(signed_i) result_o = ({~a_i[31],a_i[30:0]} >= {~b_i[31],b_i[30:0]}) ? 32'b1 : 32'b0;
                    else result_o = a_i >= b_i;
+      default: result_o = 32'b0;
     endcase
   end
 
