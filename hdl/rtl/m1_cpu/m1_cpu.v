@@ -233,7 +233,7 @@ module m1_cpu (
   // Wires connected to the Divider module instance
   wire[31:0] div_a_i = id_ex_alu_a;
   wire[31:0] div_b_i = id_ex_alu_b;
-  wire div_signed_i;
+  wire div_signed_i = id_ex_alu_signed;
   wire[31:0] div_quotient_o;
   wire[31:0] div_remainder_o;
   reg div_req_i;                            // Alternating Bit Protocol (ABP) request must be stored
@@ -288,8 +288,8 @@ module m1_cpu (
       SysCon[24] <= 0; SysCon[25] <= 0; SysCon[26] <= 0; SysCon[27] <= 0; SysCon[28] <= 0; SysCon[29] <= 0; SysCon[30] <= 0; SysCon[31] <= 0;
 
       // Initialize ABP requests to instantiated modules
-      mul_req_i <= 0;
-      div_req_i <= 0;
+      mul_req_i = 0;
+      div_req_i = 0;
 
       // Latch 1: IF/ID
       if_id_opcode <= `NOP;
@@ -1907,7 +1907,11 @@ module m1_cpu (
         end else begin
 
           $display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
-          mem_wb_value <= ex_mem_aluout;
+	  if(ex_mem_desthi) begin  // Swap halves
+	     mem_wb_value[63:32] <= ex_mem_aluout[31:0];
+	     mem_wb_value[31:0] <= ex_mem_aluout[63:32];
+	  end else  // Default case
+            mem_wb_value <= ex_mem_aluout;
 
         end
 
