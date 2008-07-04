@@ -357,6 +357,7 @@ module m1_cpu (
 
       $display("================> Time %t <================", $time);
 
+      $display("id_stall=%b,if_stall=%B",id_stall,if_stall);
       /*
        * Pipeline Stage 1: Instruction Fetch (IF)
        * 
@@ -373,36 +374,46 @@ module m1_cpu (
 
       // A RAW hazard will stall the CPU
       if(if_stall) begin
+      
+        if(id_stall) begin
         $display("INFO: CPU(%m)-IF: Fetching stalled");
-
-      // Branch taken: insert a bubble and increment PC
-      end else if(ex_mem_branch==1 && ex_mem_aluout==1) begin
+	end else begin
+	$display("INFO: CPU(%m)-IF: Fetching stalled; Bubble inserted in ID/EX");
+	if_id_opcode<=`BUBBLE;
+	end
+	end 
+	else begin
+	
+	// Branch taken: insert a bubble and increment PC
+	 if(ex_mem_branch==1 && ex_mem_aluout==1) begin
         $display("INFO: CPU(%m)-IF: Bubble inserted due branch taken in EX/MEM instruction @ADDR=%X w/OPCODE=%X having ALUout=%X",
           ex_mem_addr, ex_mem_opcode, ex_mem_aluout);
         if_id_opcode <= `BUBBLE;
         PC <= ex_mem_addrbranch;
-
-      // Jump to the required immediate address
-      end else if(id_ex_jump==1) begin
+	
+	//Jump to the required immediate address
+	end else if(id_ex_jump==1) begin
         $display("INFO: CPU(%m)-IF: Bubble inserted due to jump in ID/EX instruction @ADDR=%X w/OPCODE=%X", id_ex_addr, id_ex_opcode);
         if_id_opcode <= `BUBBLE;
         PC <= id_ex_addrjump;
-
-      // Jump to the required address stored in GPR
-      end else if(id_ex_jr==1) begin
-        $display("INFO: CPU(%m)-IF: Bubble inserted due to jump register in ID/EX instruction @ADDR=%X w/OPCODE=%X", id_ex_addr, id_ex_opcode);
+	
+	// Jump to the required address stored in GPR
+	end else if(id_ex_jr==1) begin
+	$display("INFO: CPU(%m)-IF: Bubble inserted due to jump register in ID/EX instruction @ADDR=%X w/OPCODE=%X", id_ex_addr, id_ex_opcode);
         if_id_opcode <= `BUBBLE;
         PC <= id_ex_addrjr;
-
-      // Normal execution
-      end else begin
-        $display("INFO: CPU(%m)-IF: Fetched from Program Counter @ADDR=%h getting OPCODE=%X", PC, imem_data_i);
+	
+	// Normal execution
+	end else begin
+	$display("INFO: CPU(%m)-IF: Fetched from Program Counter @ADDR=%h getting OPCODE=%X", PC, imem_data_i);
         if_id_opcode <= imem_data_i;
         if_id_addr <= PC;
         if_id_addrnext <= PCnext;
         PC <= PCnext;
-      end
-
+	end
+	end
+	
+	
       /*
        * Pipeline Stage 2: Instruction Decode (ID)
        * 
@@ -415,30 +426,35 @@ module m1_cpu (
        * This stage decodes the instruction and puts the values for the ALU inputs
        */
 
-      if(id_stall) begin
-
-        // Insert a bubble in the pipeline
+   if(id_stall) begin
+   
+        if(ex_stall) begin
         $display("INFO: CPU(%m)-ID: Decoding stalled");
-        id_ex_alu_a <= 0;
-        id_ex_alu_b <= 0;
-        id_ex_alu_func <= `ALU_OP_ADD;
-        id_ex_alu_signed <= 0;
-        id_ex_branch <= 0;
-        id_ex_jump <= 0;
-        id_ex_jr <= 0;
-        id_ex_linked <= 0;
-        id_ex_mult <= 0;
-	id_ex_div <= 0;
-        id_ex_load <= 0;
-        id_ex_store <= 0;
-        id_ex_size <= 0;
-        id_ex_store_value <= 0;
-        id_ex_destreg <= 0;
-        id_ex_desthi <= 0;
-        id_ex_destlo <= 0;
-
+       end else begin
+	$display("INFO: CPU(%m)-ID: Decode stalled; Bubble inserted in EX/MEM");
+       id_ex_opcode<=`BUBBLE;
+       id_ex_alu_a <= 0;
+       id_ex_alu_b <= 0;
+       id_ex_alu_func <= `ALU_OP_ADD;
+       id_ex_alu_signed <= 0;
+       id_ex_addr<= if_id_addr;
+       id_ex_addrnext<=0;
+       id_ex_addrjump<=0;
+       id_ex_addrbranch<=0;
+       id_ex_branch<=0;
+       id_ex_jump<=0;
+       id_ex_jr<=0;
+       id_ex_linked<=0;
+       id_ex_mult<=0;
+       id_ex_div<=0;
+       id_ex_load<=0;
+       id_ex_store<=0;
+       id_ex_destreg<=0;
+       id_ex_desthi<=0;
+       id_ex_destlo<=0;
+       id_ex_destsyscon<=0;
+      end 
       end else begin
-
         id_ex_opcode <= if_id_opcode;
         id_ex_addr <= if_id_addr;
         id_ex_addrnext <= if_id_addrnext;
@@ -446,8 +462,27 @@ module m1_cpu (
         id_ex_addrjump <= {if_id_addr[31:28], if_id_index, 2'b00};
         id_ex_addrjr <= GPR[if_id_rs];
 
-        if(if_id_opcode==`BUBBLE) $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as BUBBLE", if_id_addr, if_id_opcode);
-        else case(if_id_op)
+        if(if_id_opcode==`BUBBLE) begin
+	     $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as BUBBLE", if_id_addr, if_id_opcode);
+	      id_ex_alu_a <= 0;
+              id_ex_alu_b <= 0;
+              id_ex_alu_func <= `ALU_OP_ADD;
+              id_ex_alu_signed <= 0;
+              id_ex_branch <= 0;
+              id_ex_jump <= 0;
+              id_ex_jr <= 0;
+              id_ex_linked <= 0;
+              id_ex_mult <= 0;
+	      id_ex_div <= 0;
+              id_ex_load <= 0;
+              id_ex_store <= 0;
+              id_ex_size <= 0;
+              id_ex_store_value <= 0;
+              id_ex_destreg <= 0;
+              id_ex_desthi <= 0;
+              id_ex_destlo <= 0;
+              id_ex_destsyscon <= 0;
+	end else case(if_id_op)
           `OPCODE_J:
             begin
               $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as J %h", if_id_addr, if_id_opcode, if_id_index);
@@ -474,7 +509,7 @@ module m1_cpu (
             begin
               $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as JAL %h", if_id_addr, if_id_opcode, if_id_index);
               id_ex_alu_a <= if_id_addrnext;
-              id_ex_alu_b <= 0;
+              id_ex_alu_b <= 4;
               id_ex_alu_func <= `ALU_OP_ADD;
               id_ex_alu_signed <= 0;
               id_ex_branch <= 0;
@@ -1221,7 +1256,7 @@ module m1_cpu (
                 begin
                   $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as JALR [r%d,] r%d", if_id_addr, if_id_opcode, if_id_rd, if_id_rs);
                   id_ex_alu_a <= if_id_addrnext;
-                  id_ex_alu_b <= 0;
+                  id_ex_alu_b <= 4;
                   id_ex_alu_func <= `ALU_OP_ADD;
                   id_ex_alu_signed <= 0;
                   id_ex_branch <= 0;
@@ -1756,7 +1791,7 @@ module m1_cpu (
                   $display("INFO: CPU(%m)-ID: Decoded instruction @ADDR=%X w/OPCODE=%X as BGEZAL r%d, %h", if_id_addr, if_id_opcode, if_id_rs, if_id_imm_signext);
                   id_ex_alu_a <= GPR[if_id_rs];
                   id_ex_alu_b <= 0;
-                  id_ex_alu_func <= `ALU_OP_SGE;
+                  id_ex_alu_func <=`ALU_OP_SGE;
                   id_ex_alu_signed <= 1;
                   id_ex_branch <= 1;
                   id_ex_jump <= 0;
@@ -1792,11 +1827,20 @@ module m1_cpu (
        */
 
       if(ex_stall) begin
-
-        $display("INFO: CPU(%m)-EX: Execution stalled");
-
+      
+       if(mem_stall)begin
+       $display("INFO: CPU(%m)-EX: Execution stalled");
+       end else
+       $display("INFO: CPU(%m)-EX: Execution  stalled; Bubble inserted in EX/MEM");
+	 ex_mem_opcode<=`BUBBLE;
+        ex_mem_addr<=id_ex_addr;
+        ex_mem_addrnext<=0;
+        ex_mem_destreg<=0;
+        ex_mem_desthi<=0;
+        ex_mem_destlo<=0;
+        ex_mem_destsyscon<=0;
       end else begin
-
+      
         // If not stalled propagate values to next latches
         ex_mem_opcode      <= id_ex_opcode;
         ex_mem_addr        <= id_ex_addr;
@@ -1904,14 +1948,20 @@ module m1_cpu (
           mem_wb_value[63:32] <= 32'b0;
           mem_wb_value[31:0] <= dmem_data_i;
 
-        end else begin
-
-          $display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
-	  if(ex_mem_desthi) begin  // Swap halves
-	     mem_wb_value[63:32] <= ex_mem_aluout[31:0];
-	     mem_wb_value[31:0] <= ex_mem_aluout[63:32];
-	  end else  // Default case
-            mem_wb_value <= ex_mem_aluout;
+        end else if (ex_mem_desthi && ex_mem_destlo) begin            			
+			$display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
+			 mem_wb_value[31:0] <= ex_mem_aluout[31:0];	
+			 mem_wb_value[63:32] <= ex_mem_aluout[63:32];
+			 
+			end else if (ex_mem_desthi )begin
+			$display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
+			mem_wb_value[63:32] <= ex_mem_aluout[31:0];
+			mem_wb_value[31:0] <= 32'b0;
+			
+			end else begin
+			$display("INFO: CPU(%m)-MEM: Istruction=%x,Propagating value %X", ex_mem_addr,ex_mem_aluout);
+		        mem_wb_value[31:0] <= ex_mem_aluout[31:0];
+			mem_wb_value[63:32] <= 32'b0;
 
         end
 
