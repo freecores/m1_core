@@ -22,8 +22,8 @@ module alu(a_i, b_i, func_i, signed_i, result_o, carry_o);
   // ALU Logic
   always @(a_i or b_i or func_i or signed_i) begin
     case(func_i)
-      `ALU_OP_SLL: result_o = a_i << b_i;
-      `ALU_OP_SRL: result_o = a_i >> b_i;
+      `ALU_OP_SLL: result_o = a_i << b_i[4:0];
+      `ALU_OP_SRL: result_o = a_i >> b_i[4:0];
       `ALU_OP_SRA: result_o = {{32{a_i[31]}}, a_i } >> b_i;
       `ALU_OP_ADD: result_o = a_i + b_i;
       `ALU_OP_SUB: result_o = a_i - b_i;
