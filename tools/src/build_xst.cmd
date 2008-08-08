@@ -1,9 +1,9 @@
 run
 -ifn $FILELIST_XST
--ofn m1_top.ngc
+-ofn m1_cpu.ngc
 -ifmt MIXED
 -ofmt NGC
--top m1_top
+-top m1_cpu
 -opt_mode SPEED
 -opt_level 1
 # Device used in Spartan3E Starter Kit
