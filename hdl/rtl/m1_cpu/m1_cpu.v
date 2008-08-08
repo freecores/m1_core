@@ -47,7 +47,6 @@ module m1_cpu (
   reg[31:0] GPR[0:31];                           // General Purpose Registers
   reg[31:0] PC;                                  // Program Counter
   reg[31:0] HI, LO;                              // HI and LO registers (for multiplication/division)
-  reg[31:0] SysCon[0:31];                        // System Control registers
 
   /*
    * Pipeline latches
@@ -71,7 +70,6 @@ module m1_cpu (
   reg[31:0] id_ex_store_value;                                       // Store value
   reg[4:0] id_ex_destreg;                                            // Destination register (GPR number)
   reg id_ex_desthi, id_ex_destlo;                                    // Destination register (HI/LO)
-  reg[4:0] id_ex_destsyscon;                                         // Destination register (System Control)
 
   // Latch 3: EX/MEM
   reg[31:0] ex_mem_opcode;
@@ -85,7 +83,6 @@ module m1_cpu (
   reg[3:0] ex_mem_store_sel;                                         // Byte Selector on Stores
   reg[4:0] ex_mem_destreg;
   reg ex_mem_desthi, ex_mem_destlo;
-  reg[4:0] ex_mem_destsyscon;
 
   // Latch 4: MEM/WB
   reg[31:0] mem_wb_opcode;
@@ -93,7 +90,6 @@ module m1_cpu (
   reg[63:0] mem_wb_value;                                            // Write-back value
   reg[4:0] mem_wb_destreg;
   reg mem_wb_desthi, mem_wb_destlo;
-  reg[4:0] mem_wb_destsyscon;
 
   /*
    * Wires
@@ -121,37 +117,6 @@ module m1_cpu (
   wire[25:0] if_id_index = if_id_opcode[25:0];                                  // Index field
   wire[4:0] if_id_shamt = if_id_opcode[10:6];                                   // Shift amount
   wire[5:0] if_id_func = if_id_opcode[5:0];                                     // Function
-
-  // Name the System Configuration registers
-  wire[31:0] BadVAddr = SysCon[`SYSCON_BADVADDR];
-  wire[31:0] Status = SysCon[`SYSCON_STATUS];
-  wire[31:0] Cause = SysCon[`SYSCON_CAUSE];
-  wire[31:0] EPC = SysCon[`SYSCON_EPC];
-  wire[31:0] PrID = SysCon[`SYSCON_PRID];
-
-  // Decode fields from the System Configuration registers
-  wire cause_bd = Cause[31];                // Branch Delay
-  wire[1:0] cause_ce = Cause[29:28];        // Coprocessor Error
-  wire[5:0] cause_ip = Cause[15:10];        // Interrupts Pending
-  wire[1:0] cause_sw = Cause[9:8];          // Software interrupts
-  wire[3:0] cause_exccode = Cause[5:2];     // Exception Code
-  wire[3:0] status_cu = Status[31:28];      // Coprocessor Usability
-  wire status_bev = Status[22];             // Bootstrap Exception Vector
-  wire status_ts = Status [21];             // TLB Shutdown
-  wire status_pe = Status[20];              // Parity Error
-  wire status_cm = Status[19];              // Cache Miss
-  wire status_pz = Status[18];              // Parity Zero
-  wire status_swc = Status[17];             // Swap Caches
-  wire status_isc = Status[16];             // Isolate Cache
-  wire[7:0] status_intmask = Status[15:0];  // Interrupt Mask
-  wire status_kuo = Status[5];              // Kernel/User mode Old
-  wire status_ieo = Status[4];              // Interrupt Enable Old
-  wire status_kup = Status[3];              // Kernel/User mode Previous
-  wire status_iep = Status[2];              // Interrupt Enable Previous
-  wire status_kuc = Status[1];              // Kernel/User mode Current
-  wire status_iec = Status[0];              // Interrupt Enable Current
-  wire[7:0] prid_imp = PrID[15:8];          // Implementation
-  wire[7:0] prid_rev = PrID[7:0];           // Revision
 
   // True for still undecoded operations that read GPR[rs]
   wire if_id_reads_rs = (
@@ -281,12 +246,6 @@ module m1_cpu (
       HI <= 0;
       LO <= 0;
 
-      // System Control registers initialization
-      SysCon[0] <= 0;  SysCon[1] <= 0;  SysCon[2] <= 0;  SysCon[3] <= 0;  SysCon[4] <= 0;  SysCon[5] <= 0;  SysCon[6] <= 0;  SysCon[7] <= 0;
-      SysCon[8] <= 0;  SysCon[9] <= 0;  SysCon[10] <= 0; SysCon[11] <= 0; SysCon[12] <= 0; SysCon[13] <= 0; SysCon[14] <= 0; SysCon[15] <= 0;
-      SysCon[16] <= 0; SysCon[17] <= 0; SysCon[18] <= 0; SysCon[19] <= 0; SysCon[20] <= 0; SysCon[21] <= 0; SysCon[22] <= 0; SysCon[23] <= 0;
-      SysCon[24] <= 0; SysCon[25] <= 0; SysCon[26] <= 0; SysCon[27] <= 0; SysCon[28] <= 0; SysCon[29] <= 0; SysCon[30] <= 0; SysCon[31] <= 0;
-
       // Initialize ABP requests to instantiated modules
       mul_req_i <= 0;
       div_req_i <= 0;
@@ -319,9 +278,7 @@ module m1_cpu (
       id_ex_destreg <= 0;
       id_ex_desthi <= 0;
       id_ex_destlo <= 0;
-      id_ex_destsyscon <= 0;
 
-      // Latch 3: EX/MEM
       ex_mem_opcode <= 0;
       ex_mem_addr <= 0;
       ex_mem_addrnext <= 0;
@@ -341,7 +298,6 @@ module m1_cpu (
       ex_mem_destreg <= 0;
       ex_mem_desthi <= 0;
       ex_mem_destlo <= 0;
-      ex_mem_destsyscon <= 0;
 
       // Latch 4: MEM/WB
       mem_wb_opcode <= 0;
@@ -351,7 +307,6 @@ module m1_cpu (
       mem_wb_destreg <= 0;
       mem_wb_desthi <= 0;
       mem_wb_destlo <= 0;
-      mem_wb_destsyscon <= 0;
 
     end else begin
 
@@ -452,7 +407,6 @@ module m1_cpu (
        id_ex_destreg<=0;
        id_ex_desthi<=0;
        id_ex_destlo<=0;
-       id_ex_destsyscon<=0;
       end 
       end else begin
         id_ex_opcode <= if_id_opcode;
@@ -481,7 +435,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
 	end else case(if_id_op)
           `OPCODE_J:
             begin
@@ -503,7 +456,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_JAL:
             begin
@@ -525,7 +477,6 @@ module m1_cpu (
               id_ex_destreg <= 31;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_BEQ:
             begin
@@ -547,7 +498,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_BNE:
             begin
@@ -569,7 +519,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_BLEZ:
             begin
@@ -591,7 +540,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_BGTZ:
             begin
@@ -613,7 +561,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_ADDI:
             begin
@@ -635,7 +582,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_ADDIU:
             begin
@@ -657,7 +603,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SLTI:
             begin
@@ -679,7 +624,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SLTIU:
             begin
@@ -701,7 +645,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_ANDI:
             begin
@@ -723,7 +666,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_ORI:
             begin
@@ -745,7 +687,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_XORI:
             begin
@@ -767,7 +708,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LUI:
             begin
@@ -789,7 +729,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_COP0:
             begin
@@ -827,7 +766,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LH:
             begin
@@ -849,7 +787,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LWL:
             begin
@@ -871,7 +808,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LW:
             begin
@@ -893,7 +829,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LBU:
             begin
@@ -915,7 +850,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LHU:
             begin
@@ -937,7 +871,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LWR:
             begin
@@ -959,7 +892,6 @@ module m1_cpu (
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SB:
             begin
@@ -981,7 +913,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SH:
             begin
@@ -1003,7 +934,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
              end
           `OPCODE_SWL:
             begin
@@ -1025,7 +955,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SW:
             begin
@@ -1047,7 +976,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_SWR:
             begin
@@ -1069,7 +997,6 @@ module m1_cpu (
               id_ex_destreg <= 0;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
-              id_ex_destsyscon <= 0;
             end
           `OPCODE_LWC1:
             begin
@@ -1118,7 +1045,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SRL:
                 begin
@@ -1140,7 +1066,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SRA:
                 begin
@@ -1162,7 +1087,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SLLV:
                 begin
@@ -1184,7 +1108,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SRLV:
                 begin
@@ -1206,7 +1129,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SRAV:
                 begin
@@ -1228,7 +1150,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_JR:
                 begin
@@ -1250,7 +1171,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_JALR:
                 begin
@@ -1272,7 +1192,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SYSCALL:
                 begin
@@ -1294,7 +1213,6 @@ module m1_cpu (
 //                  id_ex_destreg <= 0;
 //                  id_ex_desthi <= 0;
 //                  id_ex_destlo <= 0;
-//                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_BREAK:
                 begin
@@ -1316,7 +1234,6 @@ module m1_cpu (
 //                  id_ex_destreg <= 0;
 //                  id_ex_desthi <= 0;
 //                  id_ex_destlo <= 0;
-//                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_MFHI:
                 begin
@@ -1338,7 +1255,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_MTHI:
                 begin
@@ -1360,7 +1276,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 1;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_MFLO:
                 begin
@@ -1382,7 +1297,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_MTLO:
                 begin
@@ -1403,7 +1317,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 1;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_MULT:
                 begin
@@ -1425,7 +1338,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 1;
                   id_ex_destlo <= 1;
-                  id_ex_destsyscon <= 0;
                   mul_req_i <= !mul_req_i;  // Toggle the ABP request
                 end
               `FUNCTION_MULTU:
@@ -1448,7 +1360,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 1;
                   id_ex_destlo <= 1;
-                  id_ex_destsyscon <= 0;
                   mul_req_i <= !mul_req_i;  // Toggle the ABP request
                 end
               `FUNCTION_DIV:
@@ -1471,7 +1382,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 1;
                   id_ex_destlo <= 1;
-                  id_ex_destsyscon <= 0;
                   div_req_i <= !div_req_i;  // Toggle the ABP request
                 end
               `FUNCTION_DIVU:
@@ -1494,7 +1404,6 @@ module m1_cpu (
                   id_ex_destreg <= 0;
                   id_ex_desthi <= 1;
                   id_ex_destlo <= 1;
-                  id_ex_destsyscon <= 0;
                   div_req_i <= !div_req_i;  // Toggle the ABP request
                 end
               `FUNCTION_ADD:
@@ -1517,7 +1426,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_ADDU:
                 begin
@@ -1539,7 +1447,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SUB:
                 begin
@@ -1561,7 +1468,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SUBU:
                 begin
@@ -1583,7 +1489,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_AND:
                 begin
@@ -1605,7 +1510,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_OR:
                 begin
@@ -1627,7 +1531,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_XOR:
                 begin
@@ -1649,7 +1552,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_NOR:
                 begin
@@ -1671,7 +1573,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SLT:
                 begin
@@ -1693,7 +1594,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `FUNCTION_SLTU:
                 begin
@@ -1715,7 +1615,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
             endcase
           `OPCODE_BCOND:
@@ -1740,7 +1639,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `BCOND_BGEZ:
                 begin
@@ -1762,7 +1660,6 @@ module m1_cpu (
                   id_ex_destreg <= if_id_rd;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `BCOND_BLTZAL:
                 begin
@@ -1784,7 +1681,6 @@ module m1_cpu (
                   id_ex_destreg <= 31;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
               `BCOND_BGEZAL:
                 begin
@@ -1806,7 +1702,6 @@ module m1_cpu (
                   id_ex_destreg <= 31;
                   id_ex_desthi <= 0;
                   id_ex_destlo <= 0;
-                  id_ex_destsyscon <= 0;
                 end
             endcase
 
@@ -1828,83 +1723,81 @@ module m1_cpu (
 
       if(ex_stall) begin
       
-       if(mem_stall)begin
-       $display("INFO: CPU(%m)-EX: Execution stalled");
-       end else
-       $display("INFO: CPU(%m)-EX: Execution  stalled; Bubble inserted in EX/MEM");
-	 ex_mem_opcode<=`BUBBLE;
-        ex_mem_addr<=id_ex_addr;
-        ex_mem_addrnext<=0;
-        ex_mem_destreg<=0;
-        ex_mem_desthi<=0;
-        ex_mem_destlo<=0;
-        ex_mem_destsyscon<=0;
-      end else begin
-      
-        // If not stalled propagate values to next latches
-        ex_mem_opcode      <= id_ex_opcode;
-        ex_mem_addr        <= id_ex_addr;
-        ex_mem_addrnext    <= id_ex_addrnext;
-        ex_mem_addrjump    <= id_ex_addrjump;
-        ex_mem_addrbranch  <= id_ex_addrbranch;
-        ex_mem_branch      <= id_ex_branch;
-        ex_mem_jump        <= id_ex_jump;
-        ex_mem_jr          <= id_ex_jr;
-        ex_mem_linked      <= id_ex_linked;
-        ex_mem_mult        <= id_ex_mult;
-        ex_mem_div         <= id_ex_div;
-        ex_mem_load        <= id_ex_load;
-        ex_mem_store       <= id_ex_store;
-        ex_mem_destreg     <= id_ex_destreg;
-        ex_mem_desthi      <= id_ex_desthi;
-        ex_mem_destlo      <= id_ex_destlo;
-        ex_mem_destsyscon  <= id_ex_destsyscon;
-
-        // Choose the output from ALU, Multiplier or Divider
-        if(id_ex_mult) ex_mem_aluout <= mul_product_o;
-        else if(id_ex_div) ex_mem_aluout <= { div_remainder_o, div_quotient_o };
-        else ex_mem_aluout <= alu_result_o;
-
-        if(id_ex_store) begin
-
-          $display("INFO: CPU(%m)-EX: Execution of Store instruction @ADDR=%X w/OPCODE=%X started to STORE_ADDR=%X", id_ex_addr, id_ex_opcode, alu_result_o);
-          case(id_ex_size)
-            `SIZE_WORD: begin
-              ex_mem_store_value <= id_ex_store_value;
-              ex_mem_store_sel <= 4'b1111;
-            end
-            `SIZE_HALF: begin
-              if(alu_result_o[1]==0) begin
-                ex_mem_store_value <= {{16'b0},id_ex_store_value[15:0]};
-                ex_mem_store_sel <= 4'b0011;
-              end else begin
-                ex_mem_store_value <= {id_ex_store_value[15:0],{16'b0}};
-                ex_mem_store_sel <= 4'b1100;
-              end
-            end
-            `SIZE_BYTE: begin
-              case(alu_result_o[1:0])
-                2'b00: begin
-                  ex_mem_store_value <= {{24'b0},id_ex_store_value[7:0]};
-                  ex_mem_store_sel <= 4'b0001;
-                end
-                2'b01: begin
-                  ex_mem_store_value <= {{16'b0},id_ex_store_value[7:0],{8'b0}};
-                  ex_mem_store_sel <= 4'b0010;
-                end
-                2'b10: begin
-                  ex_mem_store_value <= {{8'b0},id_ex_store_value[7:0],{16'b0}};
-                  ex_mem_store_sel <= 4'b0100;
-                end
-                2'b11: begin
-                  ex_mem_store_value <= {id_ex_store_value[7:0],{24'b0}};
-                  ex_mem_store_sel <= 4'b1000;
-                end
-              endcase
-            end
-          endcase
-
+        if(mem_stall)begin
+          $display("INFO: CPU(%m)-EX: Execution stalled");
         end else
+          $display("INFO: CPU(%m)-EX: Execution  stalled; Bubble inserted in EX/MEM");
+          ex_mem_opcode<=`BUBBLE;
+          ex_mem_addr<=id_ex_addr;
+          ex_mem_addrnext<=0;
+          ex_mem_destreg<=0;
+          ex_mem_desthi<=0;
+          ex_mem_destlo<=0;
+        end else begin
+      
+          // If not stalled propagate values to next latches
+          ex_mem_opcode      <= id_ex_opcode;
+          ex_mem_addr        <= id_ex_addr;
+          ex_mem_addrnext    <= id_ex_addrnext;
+          ex_mem_addrjump    <= id_ex_addrjump;
+          ex_mem_addrbranch  <= id_ex_addrbranch;
+          ex_mem_branch      <= id_ex_branch;
+          ex_mem_jump        <= id_ex_jump;
+          ex_mem_jr          <= id_ex_jr;
+          ex_mem_linked      <= id_ex_linked;
+          ex_mem_mult        <= id_ex_mult;
+          ex_mem_div         <= id_ex_div;
+          ex_mem_load        <= id_ex_load;
+          ex_mem_store       <= id_ex_store;
+          ex_mem_destreg     <= id_ex_destreg;
+          ex_mem_desthi      <= id_ex_desthi;
+          ex_mem_destlo      <= id_ex_destlo;
+
+          // Choose the output from ALU, Multiplier or Divider
+          if(id_ex_mult) ex_mem_aluout <= mul_product_o;
+          else if(id_ex_div) ex_mem_aluout <= { div_remainder_o, div_quotient_o };
+          else ex_mem_aluout <= alu_result_o;
+
+          if(id_ex_store) begin
+
+            $display("INFO: CPU(%m)-EX: Execution of Store instruction @ADDR=%X w/OPCODE=%X started to STORE_ADDR=%X", id_ex_addr, id_ex_opcode, alu_result_o);
+            case(id_ex_size)
+              `SIZE_WORD: begin
+                ex_mem_store_value <= id_ex_store_value;
+                ex_mem_store_sel <= 4'b1111;
+              end
+              `SIZE_HALF: begin
+                if(alu_result_o[1]==0) begin
+                  ex_mem_store_value <= {{16'b0},id_ex_store_value[15:0]};
+                  ex_mem_store_sel <= 4'b0011;
+                end else begin
+                  ex_mem_store_value <= {id_ex_store_value[15:0],{16'b0}};
+                  ex_mem_store_sel <= 4'b1100;
+                end
+              end
+              `SIZE_BYTE: begin
+                case(alu_result_o[1:0])
+                  2'b00: begin
+                    ex_mem_store_value <= {{24'b0},id_ex_store_value[7:0]};
+                    ex_mem_store_sel <= 4'b0001;
+                  end
+                  2'b01: begin
+                    ex_mem_store_value <= {{16'b0},id_ex_store_value[7:0],{8'b0}};
+                    ex_mem_store_sel <= 4'b0010;
+                  end
+                  2'b10: begin
+                    ex_mem_store_value <= {{8'b0},id_ex_store_value[7:0],{16'b0}};
+                    ex_mem_store_sel <= 4'b0100;
+                  end
+                  2'b11: begin
+                    ex_mem_store_value <= {id_ex_store_value[7:0],{24'b0}};
+                    ex_mem_store_sel <= 4'b1000;
+                  end
+                endcase
+              end
+            endcase
+
+          end else
 
           // Not a store
           $display("INFO: CPU(%m)-EX: Execution of instruction @ADDR=%X w/OPCODE=%X gave ALU result %X", id_ex_addr, id_ex_opcode, alu_result_o);
@@ -1940,7 +1833,6 @@ module m1_cpu (
         mem_wb_destreg    <= ex_mem_destreg;
         mem_wb_desthi     <= ex_mem_desthi;
         mem_wb_destlo     <= ex_mem_destlo;
-        mem_wb_destsyscon <= ex_mem_destsyscon;
 
         if(ex_mem_load) begin
 
@@ -2002,14 +1894,8 @@ module m1_cpu (
           LO <= mem_wb_value[31:0];
         end
 
-        // SysCon
-        if(mem_wb_destsyscon!=0) begin
-          $display("INFO: CPU(%m)-WB: Writing Back SysCon[%d]=%X", mem_wb_destsyscon, mem_wb_value[31:0]);
-          GPR[mem_wb_destsyscon] <= mem_wb_value[31:0];
-        end
-
         // Idle
-        if(mem_wb_destreg==0 & mem_wb_desthi==0 & mem_wb_destlo==0 & mem_wb_destsyscon==0)
+        if(mem_wb_destreg==0 & mem_wb_desthi==0 & mem_wb_destlo==0)
           $display("INFO: CPU(%m)-WB: Write-Back has nothing to do");
 
       end
@@ -2023,8 +1909,8 @@ module m1_cpu (
         GPR[16], GPR[17], GPR[18], GPR[19], GPR[20], GPR[21], GPR[22], GPR[23]);
       $display("INFO: CPU(%m)-Regs: R24=%X R25=%X R26=%X R27=%X R28=%X R29=%X R30=%X R31=%X",
         GPR[24], GPR[25], GPR[26], GPR[27], GPR[28], GPR[29], GPR[30], GPR[31]);
-      $display("INFO: CPU(%m)-Regs: PC=%X HI=%X LO=%X Status=%X Cause=%X EPC=%X",
-        PC, HI, LO, Status, Cause, EPC);
+      $display("INFO: CPU(%m)-Regs: PC=%X HI=%X LO=%X",
+        PC, HI, LO);
 
   end
 
