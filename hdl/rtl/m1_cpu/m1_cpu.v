@@ -288,8 +288,8 @@ module m1_cpu (
       SysCon[24] <= 0; SysCon[25] <= 0; SysCon[26] <= 0; SysCon[27] <= 0; SysCon[28] <= 0; SysCon[29] <= 0; SysCon[30] <= 0; SysCon[31] <= 0;
 
       // Initialize ABP requests to instantiated modules
-      mul_req_i = 0;
-      div_req_i = 0;
+      mul_req_i <= 0;
+      div_req_i <= 0;
 
       // Latch 1: IF/ID
       if_id_opcode <= `NOP;
