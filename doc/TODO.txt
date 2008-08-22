@@ -1,0 +1,27 @@
+Simply RISC M1 Core ("Mistral") TODO List
+=========================================
+
+Implementation
+--------------
+Memory hierarchy requires at least a Wishbone interface
+and some sort of caches.
+
+
+Functional Verification
+-----------------------
+The simulation work has been performed by Simone Lunardo and Paolo Piscopo;
+the verification status for each SIMPLE instruction is as follows:
+
+- LOAD/STORE
+Common 32-bit LW/SW have been tested and they work.
+Other sizes are not working.
+Unaligned accesses are not implemented at all.
+
+- ALU I-TYPE, ALU R-TYPE, SHIFT, MULTIPLY-DIVIDE
+All tested and working.
+
+- JUMP/BRANCH
+Jump are working (J JAL JR JALR) including the delay slot.
+Equality branches (BEQ BNE) execute 2 delay slots rather than just 1.
+Disequality branches (BLEZ BGTZ BLTZ BGEZ) do not work.
+
