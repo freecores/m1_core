@@ -1,98 +1,82 @@
 /*
  * Simply RISC M1 Memory Management Unit
- * 
- * It will include the following components:
- * - Instruction Cache
- * - Data Cache
- * - TLB
- * but for now it's just a fake MMU.
+ *
+ * This block converts Harvard architecture requests to access the
+ * small internal prefetch buffer, and just in case the external
+ * Wishbone bus.
+ * Memory size is 256 word * 4 byte = 1024 byte,
+ * so 10 address bits are required => [9:0]
+ * and being the lower 2 bits unused the offset in memory is [9:2].
  */
 
 module m1_mmu (
-    sys_clock_i, sys_reset_i,
-    imem_addr_i, imem_data_o, imem_read_i, imem_busy_o,
-    dmem_addr_i, dmem_data_o, dmem_data_i, dmem_read_i, dmem_write_i, dmem_busy_o ,dmem_sel_i
+
+    // System
+    input sys_clock_i,                            // System Clock
+    input sys_reset_i,                            // System Reset
+
+    // Instruction Memory
+    input imem_read_i,                            // I$ Read
+    input[31:0] imem_addr_i,                      // I$ Address
+    output imem_done_o,                           // I$ Done
+    output[31:0] imem_data_o,                     // I$ Data
+
+    // Data Memory
+    input dmem_read_i,                            // D$ Read
+    input dmem_write_i,                           // D$ Write
+    input[31:0] dmem_addr_i,                      // D$ Address
+    input[31:0] dmem_data_i,                      // D$ Write Data
+    input[3:0] dmem_sel_i,                        // D$ Byte selector
+    output dmem_done_o,                           // D$ Done
+    output[31:0] dmem_data_o,                     // D$ Read Data
+
+    // Wishbone Master interface
+    output wb_cyc_o,                              // Cycle Start
+    output wb_stb_o,                              // Strobe Request
+    output wb_we_o,                               // Write Enable
+    output[31:0] wb_adr_o,                        // Address Bus
+    output[31:0] wb_dat_o,                        // Data Out
+    output[3:0] wb_sel_o,                         // Byte Select
+    input wb_ack_i,                               // Ack
+    input[31:0] wb_dat_i                          // Data In
+
   );
 
-  // System
-  input sys_clock_i, sys_reset_i;
-   
-  // Instruction Memory
-  input[31:0] imem_addr_i;
-  output[31:0] imem_data_o;
-  input imem_read_i;
-  output imem_busy_o;
+  /*
+   * Registers
+   */
 
-  // Data Memory
-  input[31:0] dmem_addr_i;
-  output[31:0] dmem_data_o;
-  input[31:0] dmem_data_i;
-  input dmem_read_i;
-  input dmem_write_i;
-  output dmem_busy_o;
+  // Prefetch buffer
+  reg[31:0] MEM[255:0];
 
-  // Fake Instruction and Data Memories
-  reg[31:0] imem_data[0:1023];   // 4KB I$
-  reg[31:0] dmem_data[0:255];    // 1KB D$
- 
-
-  //Selector
-  input[3:0] dmem_sel_i;
-  reg[31:0] data_temp;                    
-
-  // Initialize fake memories
-  integer i;
+  // Initialize memory content
   initial begin
-     
-    // I$ is initialized from file
-    $readmemh("code.txt", imem_data);
-
-    // D$ defaults to zeroes
-    for(i=0; i<256; i=i+1) dmem_data[i] = 0;
-     
+`include "m1_mmu_initial.vh"
   end
 
-  assign imem_busy_o = 0;
-  assign dmem_busy_o = 0;
+  /*
+   * Wires
+   */
 
+  // See if there are pending requests
+  wire access_pending_imem = imem_read_i;
+  wire access_pending_dmem = 0;
+  wire access_pending_ext = (dmem_read_i || dmem_write_i);
 
-  assign imem_data_o = imem_data[{2'b00, imem_addr_i[31:2]}];
-  assign dmem_data_o = dmem_data[{2'b00, dmem_addr_i[31:2]}];
+  // Default grant for memories
+  assign imem_done_o = access_pending_imem;
+  assign dmem_done_o = access_pending_dmem || (access_pending_ext && wb_ack_i);
 
+  // Set Wishbone outputs
+  assign wb_cyc_o = access_pending_ext;
+  assign wb_stb_o = access_pending_ext;
+  assign wb_we_o = access_pending_ext && dmem_write_i;
+  assign wb_sel_o = dmem_sel_i;
+  assign wb_adr_o = dmem_addr_i;
+  assign wb_dat_o = dmem_data_i;
 
-  always @(dmem_write_i or dmem_read_i) begin          
+  // Return read data
+  assign imem_data_o = MEM[imem_addr_i[9:2]];
+  assign dmem_data_o = wb_dat_i;
 
-    if(dmem_write_i) begin
-
-       if(dmem_sel_i[0]) begin
-                         data_temp = dmem_data[{2'b00, dmem_addr_i[31:2]}];
-                         data_temp[7:0] = dmem_data_i[7:0];
-                         dmem_data[{2'b00, dmem_addr_i[31:2]}] = data_temp;
-       end 
-       if(dmem_sel_i[1]) begin
-                         data_temp = dmem_data[{2'b00, dmem_addr_i[31:2]}];
-                         data_temp[15:8] = dmem_data_i[15:8];
-                         dmem_data[{2'b00, dmem_addr_i[31:2]}] = data_temp;
-       end 
-       if(dmem_sel_i[2]) begin
-                         data_temp = dmem_data[{2'b00, dmem_addr_i[31:2]}];
-                         data_temp[24:16] = dmem_data_i[24:16];
-                         dmem_data[{2'b00, dmem_addr_i[31:2]}] = data_temp;
-       end 
-       if(dmem_sel_i[3]) begin
-                         data_temp = dmem_data[{2'b00, dmem_addr_i[31:2]}];
-                         data_temp[31:24] = dmem_data_i[31:24];
-                         dmem_data[{2'b00, dmem_addr_i[31:2]}] = data_temp;
-       end
-       $display("INFO: MEMH(%m): WRITE_ADDR=%X, WRITE_DATA=%X", dmem_addr_i, dmem_data_i);
-    end             
-
-
-    if(dmem_read_i) begin
-      $display("INFO: MEMH(%m): READ_ADDR=%X, READ_DATA=%X", dmem_addr_i, dmem_data[{2'b00, dmem_addr_i[31:2]}]);  
-    end
-  end
-  
-   
 endmodule
-
