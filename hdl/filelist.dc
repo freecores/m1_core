@@ -2,12 +2,16 @@
 
 # Analyze
 
-analyze -format verilog ~/m1_core/hdl/rtl/m1_cpu/m1_alu.v
-analyze -format verilog ~/m1_core/hdl/rtl/m1_cpu/m1_cpu.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_alu.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_mul.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_div.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_cpu.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_mmu.v
+analyze -format verilog ~/m1_core/hdl/rtl/m1_core/m1_core.v
 
 # Technology-independent elaboration and linking
 
-set active_design m1_cpu
+set active_design m1_core
 elaborate $active_design
 current_design $active_design
 link
