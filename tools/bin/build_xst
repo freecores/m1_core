@@ -5,15 +5,31 @@ if ! [ -d "$M1_ROOT" ]; then echo "***ERROR***: directory '$M1_ROOT' does not ex
 
 cd $M1_ROOT/run/synth/xst
 rm -rf *  # Make clean
-xst -ifn $M1_ROOT/tools/src/build_xst.cmd -ofn synth.log
 
-#export TOP_LEVEL="m1_top"
-#ngdbuild ${TOP_LEVEL}
-#map -o ${TOP_LEVEL}_map.ncd ${TOP_LEVEL}
-#par -w -ol high ${TOP_LEVEL}_map.ncd ${TOP_LEVEL}.ncd
-#bitgen -g startupclk:Cclk -w ${TOP_LEVEL} ${TOP_LEVEL}.bit
-#trce ${TOP_LEVEL} ${TOP_LEVEL}_map
+# Set variables
+export DESIGN_TOP="spartan3esk_top"
+export FPGA_DEVICE="xc3s500e-fg320-4"
+export CMDFILE="command.xst"
+export LOGFILE="synth.log"
 
+# Create command file
+echo "run" > $CMDFILE
+echo "-ifn $FILELIST_XST" >> $CMDFILE
+echo "-ifmt MIXED" >> $CMDFILE
+echo "-ofn $DESIGN_TOP.ngc" >> $CMDFILE
+echo "-ofmt NGC" >> $CMDFILE
+echo "-top $DESIGN_TOP" >> $CMDFILE
+echo "-opt_mode SPEED" >> $CMDFILE
+echo "-opt_level 1" >> $CMDFILE
+echo "-p $FPGA_DEVICE" >> $CMDFILE
 
+# Run the complete Xilinx flow from synthesis to bitstream
+xst -ifn $CMDFILE -ofn $LOGFILE
+ngdbuild -p $FPGA_DEVICE -uc ${M1_ROOT}/hdl/rtl/${DESIGN_TOP}/${DESIGN_TOP}.ucf ${DESIGN_TOP}.ngc 2>&1 | tee --append ${LOGFILE}
+map -pr b -p $FPGA_DEVICE $DESIGN_TOP 2>&1 | tee --append $LOGFILE
+par -w -ol high $DESIGN_TOP ${DESIGN_TOP}_par.ncd 2>&1 | tee --append $LOGFILE
+trce -v 25 ${DESIGN_TOP}_par.ncd ${DESIGN_TOP}.pcf 2>&1 | tee --append $LOGFILE
+bitgen ${DESIGN_TOP}_par.ncd -l -w ${DESIGN_TOP}.bit 2>&1 | tee --append $LOGFILE
 
+# Now just use impact to program the device with the bit file... and have fun!!!
 

@@ -13,24 +13,32 @@ if ! [ -d "$M1_ROOT" ]; then echo "***ERROR***: directory '$M1_ROOT' does not ex
 cd $M1_ROOT/tests
 rm -f *.o *~ *.bin                  # Make clean
 if ( test $# != 1 ) then
-  echo "compile_test - Script to compile a test for the M1 Core";
-  echo "(C) 2006 by Simply RISC";
-  echo "Usage:";
-  echo "      compile_test <TEST_NAME>";
-  echo "where parameter is the test name without extension (e.g. 'hello').";
-  exit 1;
+  echo ""
+  echo "compile_test - Script to compile a test for the M1 Core"
+  echo ""
+  echo "(C)2008 Simply RISC"
+  echo ""
+  echo "Usage:"
+  echo ""
+  echo "      compile_test <TEST_NAME>"
+  echo ""
+  echo "where parameter is the test name without extension (e.g. 'hello')."
+  echo ""
+  exit 1
 fi
 if ( ! test -e $1.c ) then
-  echo "ERROR: Test $1.c does not exist into the tests directory!";
-  exit 1;
+  echo "ERROR: Test $1.c does not exist into the tests directory!"
+  exit 1
 fi
 
-mipsel-linux-gcc -c -O0 -mips1 $M1_ROOT/tools/src/boot.s
-mipsel-linux-gcc -c -O0 -mips1 $1.c
-mipsel-linux-ld -Ur -EL -o $1.bin boot.o $1.o
-mipsel-linux-objdump -d -EL -w -z $1.bin > $1.dump
-cat $1.dump | dump2hex.php -q > $1.hex
-cp -f $1.hex code.txt
+mipsel-linux-gcc -c -O0 -msoft-float -mips1 $M1_ROOT/tests/boot/boot.s
+mipsel-linux-gcc -c -O0 -msoft-float -mips1 $1.c
+mipsel-linux-ld -Ur -EL -O0 -G 0 -o $1.bin boot.o $1.o
+mipsel-linux-objdump -d -EL -w -z --disassembler-options=no-aliases,reg-names=numeric $1.bin > $1.dump
+cat $1.dump | dump2vlog.php -q > $M1_ROOT/hdl/rtl/m1_core/m1_mmu_initial.vh
+
+echo "The initial content of the instruction memory has been updated successfully!"
+echo "Now you should run 'build_icarus' script again."
 
 rm -f *.o *~ *.bin                  # Make clean
 

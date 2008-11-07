@@ -4,7 +4,10 @@ if [ -z "$M1_ROOT" ]; then echo "***ERROR***: M1_ROOT variable is undefined, ple
 if ! [ -d "$M1_ROOT" ]; then echo "***ERROR***: directory '$M1_ROOT' does not exist, please check it and run 'source sourceme' again."; exit 1; fi
 
 cd $M1_ROOT/run/sim/icarus
-ln -f -s ../../../tests/code.txt .
-./testbench 2>&1 | tee sim.log
-
+./testbench > sim.log
+echo "Simulation completed!"
+echo "To see the output:"
+echo "        less $M1_ROOT/run/sim/icarus/sim.log"
+echo "Too watch the waveforms:"
+echo "        gtkwave $M1_ROOT/run/sim/icarus/trace.vcd"
 
