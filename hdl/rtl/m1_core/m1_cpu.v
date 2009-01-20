@@ -58,10 +58,11 @@ module m1_cpu (
    */
 
   // Register file
-  reg[31:0] GPR[31:0];                           // General Purpose Registers
-  reg[31:0] PC;                                  // Program Counter
-  reg[31:0] HI, LO;                              // HI and LO registers (for multiplication/division)
-
+  reg[31:0] GPR[31:0];                            // General Purpose Registers
+  reg[31:0] PC;                                   // Program Counter
+  reg[31:0] HI, LO;                               // HI and LO registers (for multiplication/division)
+  reg[31:0] SysCon[0:31];                         // System Control registers
+   
   /*
    * Pipeline latches
    */
@@ -84,6 +85,7 @@ module m1_cpu (
   reg[31:0] id_ex_store_value;                                       // Store value
   reg[4:0] id_ex_destreg;                                            // Destination register (GPR number)
   reg id_ex_desthi, id_ex_destlo;                                    // Destination register (HI/LO)
+  reg[4:0] id_ex_destsyscon;                                         // Destination register (System Control)
 
   // Latch 3: EX/MEM
   reg[31:0] ex_mem_opcode;
@@ -97,18 +99,19 @@ module m1_cpu (
   reg[3:0] ex_mem_store_sel;                                         // Byte Selector on Stores
   reg[4:0] ex_mem_destreg;
   reg ex_mem_desthi, ex_mem_destlo;
-
+  reg[4:0] ex_mem_destsyscon;
+   
   // Latch 4: MEM/WB
   reg[31:0] mem_wb_opcode;
   reg[31:0] mem_wb_addr, mem_wb_addrnext;
   reg[63:0] mem_wb_value;                                            // Write-back value
   reg[4:0] mem_wb_destreg;
   reg mem_wb_desthi, mem_wb_destlo;
+  reg [4:0] mem_wb_destsyscon;
 
   /*
    * Combinational logic
-   */
-   
+   */  
 
   // ALU
   assign alu_a_o = id_ex_alu_a;
@@ -219,6 +222,13 @@ module m1_cpu (
   assign mem_stall = wb_stall || ( (dmem_read_o||dmem_write_o) && !dmem_done_i);
   assign wb_stall = 0;
 
+  // Name the System Configuration registers
+  wire[31:0] BadVAddr = SysCon[`SYSCON_BADVADDR];
+  wire[31:0] Status = SysCon[`SYSCON_STATUS];
+  wire[31:0] Cause = SysCon[`SYSCON_CAUSE];
+  wire[31:0] EPC = SysCon[`SYSCON_EPC];
+  wire[31:0] PrID = SysCon[`SYSCON_PRID];
+   
   // Index for GPR initialization
   integer i;
 
@@ -239,6 +249,9 @@ module m1_cpu (
       HI <= 0;
       LO <= 0;
 
+      // Initialize system configuration registers
+      for(i=0; i<=31; i=i+1) SysCon[i] <= 32'h00000000;
+       
       // Initialize ABP requests to instantiated modules
       mul_req_o <= 0;
       div_req_o <= 0;
@@ -1892,6 +1905,12 @@ module m1_cpu (
           LO <= mem_wb_value[31:0];
         end
 
+        // SysCon
+        if(mem_wb_destsyscon!=0) begin
+          $display("INFO: CPU(%m)-WB: Writing Back SysCon[%d]=%X", mem_wb_destsyscon, mem_wb_value[31:0]);
+          SysCon[mem_wb_destsyscon] <= mem_wb_value[31:0];
+        end
+	 
         // Idle
         if(mem_wb_destreg==0 & mem_wb_desthi==0 & mem_wb_destlo==0)
           $display("INFO: CPU(%m)-WB: Write-Back has nothing to do");

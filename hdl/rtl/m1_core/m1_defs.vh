@@ -15,6 +15,13 @@
 `define SIZE_LEFT    3'b100
 `define SIZE_RIGHT   3'b101
 
+// System Configuration Coprocessor (CP0) registers for TLB-less systems
+`define SYSCON_BADVADDR  8
+`define SYSCON_STATUS   12
+`define SYSCON_CAUSE    13
+`define SYSCON_EPC      14
+`define SYSCON_PRID     15
+
 // Opcodes (ordered by binary value)
 `define OPCODE_SPECIAL   6'b000000  // SPECIAL instruction class
 `define OPCODE_BCOND     6'b000001  // BCOND instruction class
