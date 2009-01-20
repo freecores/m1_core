@@ -3,9 +3,7 @@ Simply RISC M1 Core ("Mistral") TODO List
 
 Implementation
 --------------
-Current implementation lacks separate L1 caches (there's a unified L2 into the DDR Controller).
-Also an INTC (Interrupt Controller) should be required to handle 32 IRQs and pass only one to the CPU.
-The CPU has no interrupt handling at all so it must be added.
+At the moment the CPU has no interrupt handling.
 
 
 ISA Functional Verification
@@ -24,5 +22,5 @@ All tested and working.
 - JUMP/BRANCH
 Jump are working (J JAL JR JALR) including the delay slot.
 Equality branches (BEQ BNE) execute 2 delay slots rather than just 1.
-Disequality branches (BLEZ BGTZ BLTZ BGEZ) do not work.
+Disequality branches (BLEZ BGTZ BLTZ BGEZ) do not work yet.
 
