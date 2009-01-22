@@ -291,6 +291,7 @@ module m1_cpu (
       ex_mem_addrjump <= 0;
       ex_mem_addrbranch <= 0;
       ex_mem_aluout <= 0;
+      ex_mem_carry <= 0;
       ex_mem_branch <= 0;
       ex_mem_jump <= 0;
       ex_mem_jr <= 0;
@@ -344,14 +345,14 @@ module m1_cpu (
 
       end else begin
 
-        // Branch taken: insert a bubble and increment PC
+        // If branch taken update the Program Counter
         if(ex_mem_branch==1 && ex_mem_aluout==32'h00000001) begin
 
           $display("INFO: CPU(%m)-IF: Bubble inserted due branch taken in EX/MEM instruction @ADDR=%X w/OPCODE=%X having ALUout=%X", ex_mem_addr, ex_mem_opcode, ex_mem_aluout);
           if_id_opcode <= `BUBBLE;
           PC <= ex_mem_addrbranch;
 
-        //Jump to the required immediate address
+        // Jump to the required immediate address
         end else if(id_ex_jump==1) begin
 
           $display("INFO: CPU(%m)-IF: Bubble inserted due to jump in ID/EX instruction @ADDR=%X w/OPCODE=%X", id_ex_addr, id_ex_opcode);
@@ -1081,7 +1082,7 @@ module m1_cpu (
                   id_ex_alu_a <= GPR[if_id_rt];
                   id_ex_alu_b <= if_id_shamt;
                   id_ex_alu_func <= `ALU_OP_SRA;
-                  id_ex_alu_signed <= 1;                 // does nothing??
+                  id_ex_alu_signed <= 1;
                   id_ex_branch <= 0;
                   id_ex_jump <= 0;
                   id_ex_jr <= 0;
@@ -1764,15 +1765,20 @@ module m1_cpu (
         ex_mem_destlo      <= id_ex_destlo;
 
         // Choose the output from ALU, Multiplier or Divider
-        if(id_ex_mult) ex_mem_aluout <= mul_product_i;
-        else if(id_ex_div) ex_mem_aluout <= { div_remainder_i, div_quotient_i };
-        else begin
+        if(id_ex_mult) begin
+          ex_mem_aluout <= mul_product_i;
+	  ex_mem_carry <= 1b'0;
+	end else if(id_ex_div) begin
+         ex_mem_aluout <= { div_remainder_i, div_quotient_i };
+	  ex_mem_carry <= 1b'0;
+        end else begin
           ex_mem_aluout <= {32'b0, alu_result_i[31:0]};
           ex_mem_carry <= alu_result_i[32];
 	end
 
         if(id_ex_store) begin
 
+          // Handle all supported store sizes
           $display("INFO: CPU(%m)-EX: Execution of Store instruction @ADDR=%X w/OPCODE=%X started to STORE_ADDR=%X w/STORE_DATA=%X", id_ex_addr, id_ex_opcode, alu_result_i, id_ex_store_value);
           case(id_ex_size)
             `SIZE_WORD: begin
