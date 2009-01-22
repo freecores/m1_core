@@ -94,7 +94,8 @@ module m1_cpu (
   reg ex_mem_carry;                                                  // ALU carry
   reg ex_mem_branch, ex_mem_jump, ex_mem_jr, ex_mem_linked;
   reg ex_mem_mult, ex_mem_div;
-  reg ex_mem_load,ex_mem_store;
+  reg ex_mem_load, ex_mem_store;
+  reg[2:0] ex_mem_size;
   reg[31:0] ex_mem_store_value;
   reg[3:0] ex_mem_store_sel;                                         // Byte Selector on Stores
   reg[4:0] ex_mem_destreg;
@@ -1760,6 +1761,7 @@ module m1_cpu (
         ex_mem_div         <= id_ex_div;
         ex_mem_load        <= id_ex_load;
         ex_mem_store       <= id_ex_store;
+        ex_mem_size        <= id_ex_size;
         ex_mem_destreg     <= id_ex_destreg;
         ex_mem_desthi      <= id_ex_desthi;
         ex_mem_destlo      <= id_ex_destlo;
@@ -1767,18 +1769,17 @@ module m1_cpu (
         // Choose the output from ALU, Multiplier or Divider
         if(id_ex_mult) begin
           ex_mem_aluout <= mul_product_i;
-	  ex_mem_carry <= 1b'0;
+	  ex_mem_carry <= 1'b0;
 	end else if(id_ex_div) begin
-         ex_mem_aluout <= { div_remainder_i, div_quotient_i };
-	  ex_mem_carry <= 1b'0;
+          ex_mem_aluout <= { div_remainder_i, div_quotient_i };
+	  ex_mem_carry <= 1'b0;
         end else begin
           ex_mem_aluout <= {32'b0, alu_result_i[31:0]};
           ex_mem_carry <= alu_result_i[32];
 	end
 
+        // Handle all supported store sizes
         if(id_ex_store) begin
-
-          // Handle all supported store sizes
           $display("INFO: CPU(%m)-EX: Execution of Store instruction @ADDR=%X w/OPCODE=%X started to STORE_ADDR=%X w/STORE_DATA=%X", id_ex_addr, id_ex_opcode, alu_result_i, id_ex_store_value);
           case(id_ex_size)
             `SIZE_WORD: begin
@@ -1787,40 +1788,38 @@ module m1_cpu (
             end
             `SIZE_HALF: begin
               if(alu_result_i[1]==0) begin
-                ex_mem_store_value <= {{16'b0},id_ex_store_value[15:0]};
+                ex_mem_store_value <= {{16'b0}, id_ex_store_value[15:0]};
                 ex_mem_store_sel <= 4'b0011;
               end else begin
-                ex_mem_store_value <= {id_ex_store_value[15:0],{16'b0}};
+                ex_mem_store_value <= {id_ex_store_value[15:0], {16'b0}};
                 ex_mem_store_sel <= 4'b1100;
               end
             end
             `SIZE_BYTE: begin
               case(alu_result_i[1:0])
                 2'b00: begin
-                  ex_mem_store_value <= {{24'b0},id_ex_store_value[7:0]};
+                  ex_mem_store_value <= {{24'b0}, id_ex_store_value[7:0]};
                   ex_mem_store_sel <= 4'b0001;
                 end
                 2'b01: begin
-                  ex_mem_store_value <= {{16'b0},id_ex_store_value[7:0],{8'b0}};
+                  ex_mem_store_value <= {{16'b0}, id_ex_store_value[7:0],{8'b0}};
                   ex_mem_store_sel <= 4'b0010;
                 end
                 2'b10: begin
-                  ex_mem_store_value <= {{8'b0},id_ex_store_value[7:0],{16'b0}};
+                  ex_mem_store_value <= {{8'b0}, id_ex_store_value[7:0],{16'b0}};
                   ex_mem_store_sel <= 4'b0100;
                 end
                 2'b11: begin
-                  ex_mem_store_value <= {id_ex_store_value[7:0],{24'b0}};
+                  ex_mem_store_value <= {id_ex_store_value[7:0], {24'b0}};
                   ex_mem_store_sel <= 4'b1000;
                 end
               endcase
             end
           endcase
 
+        // Not a store
         end else begin
-
-          // Not a store
           $display("INFO: CPU(%m)-EX: Execution of instruction @ADDR=%X w/OPCODE=%X gave ALU result %X", id_ex_addr, id_ex_opcode, alu_result_i);
-
         end
 
       end
@@ -1851,29 +1850,49 @@ module m1_cpu (
         mem_wb_desthi     <= ex_mem_desthi;
         mem_wb_destlo     <= ex_mem_destlo;
 
+        // Handle all supported load sizes
         if(ex_mem_load) begin
 
           $display("INFO: CPU(%m)-MEM: Loading value %X", dmem_data_i);
           mem_wb_value[63:32] <= 32'b0;
-          mem_wb_value[31:0] <= dmem_data_i;
+	  case(ex_mem_size)
+	    `SIZE_WORD: begin
+              mem_wb_value[31:0] <= dmem_data_i;
+	    end
+	    `SIZE_HALF: begin
+	      if(ex_mem_aluout[1]==0) mem_wb_value[31:0] <= {{16{dmem_data_i[15]}}, dmem_data_i[15:0]};
+	      else mem_wb_value[31:0] <= {{16{dmem_data_i[31]}}, dmem_data_i[31:16]};
+	    end
+	    `SIZE_BYTE: begin
+	      case(ex_mem_aluout[1:0])
+		2'b00: mem_wb_value[31:0] <= {{24{dmem_data_i[7]}},  dmem_data_i[7:0]};
+		2'b01: mem_wb_value[31:0] <= {{24{dmem_data_i[15]}}, dmem_data_i[15:8]};
+		2'b10: mem_wb_value[31:0] <= {{24{dmem_data_i[23]}}, dmem_data_i[23:16]};
+		2'b11: mem_wb_value[31:0] <= {{24{dmem_data_i[31]}}, dmem_data_i[31:24]};		
+	      endcase	       
+	    end
+          endcase	    
 
+        // For multiplications and divisions the result is 64-bit wide
         end else if (ex_mem_desthi && ex_mem_destlo) begin            			
 
           $display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
-          mem_wb_value[31:0] <= ex_mem_aluout[31:0];	
           mem_wb_value[63:32] <= ex_mem_aluout[63:32];
+          mem_wb_value[31:0] <= ex_mem_aluout[31:0];	
 
+        // For MTHI instruction we must move the value to the correct side of the bus
         end else if (ex_mem_desthi) begin
 
           $display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
           mem_wb_value[63:32] <= ex_mem_aluout[31:0];
           mem_wb_value[31:0] <= 32'b0;
 
+        // The default is working with 32-bit values
         end else begin
 
           $display("INFO: CPU(%m)-MEM: Propagating value %X", ex_mem_aluout);
-          mem_wb_value[31:0] <= ex_mem_aluout[31:0];
           mem_wb_value[63:32] <= 32'b0;
+          mem_wb_value[31:0] <= ex_mem_aluout[31:0];
 
         end
 
