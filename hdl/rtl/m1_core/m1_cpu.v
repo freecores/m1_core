@@ -16,8 +16,7 @@ module m1_cpu (
     output[31:0] alu_b_o,                         // ALU Operand B
     output[4:0] alu_func_o,                       // ALU Function
     output alu_signed_o,                          // ALU operation is Signed
-    input[31:0] alu_result_i,                     // ALU Result
-    input alu_carry_i,                            // ALU Carry
+    input[32:0] alu_result_i,                     // ALU Result with Carry
 
     // Multiplier
     output reg mul_req_o,                         // Multiplier Request
@@ -92,6 +91,7 @@ module m1_cpu (
   reg[31:0] ex_mem_addr, ex_mem_addrnext;
   reg[31:0] ex_mem_addrbranch, ex_mem_addrjump, ex_mem_addrjr;
   reg[63:0] ex_mem_aluout;                                           // ALU result
+  reg ex_mem_carry;                                                  // ALU carry
   reg ex_mem_branch, ex_mem_jump, ex_mem_jr, ex_mem_linked;
   reg ex_mem_mult, ex_mem_div;
   reg ex_mem_load,ex_mem_store;
@@ -1766,7 +1766,10 @@ module m1_cpu (
         // Choose the output from ALU, Multiplier or Divider
         if(id_ex_mult) ex_mem_aluout <= mul_product_i;
         else if(id_ex_div) ex_mem_aluout <= { div_remainder_i, div_quotient_i };
-        else ex_mem_aluout <= alu_result_i;
+        else begin
+          ex_mem_aluout <= {32'b0, alu_result_i[31:0]};
+          ex_mem_carry <= alu_result_i[32];
+	end
 
         if(id_ex_store) begin
 

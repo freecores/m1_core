@@ -32,8 +32,7 @@ module m1_core (
   wire[31:0] alu_b;
   wire[4:0] alu_func;
   wire alu_signed;
-  wire[31:0] alu_result;
-  wire alu_carry;
+  wire[32:0] alu_result;
 
   // Multiplier
   wire mul_req;
@@ -85,7 +84,6 @@ module m1_core (
     .alu_func_o(alu_func),
     .alu_signed_o(alu_signed),
     .alu_result_i(alu_result),
-    .alu_carry_i(alu_carry),
 
     // Multiplier
     .mul_req_o(mul_req),
@@ -127,8 +125,7 @@ module m1_core (
     .b_i(alu_b),
     .func_i(alu_func),
     .signed_i(alu_signed),
-    .result_o(alu_result),
-    .carry_o(alu_carry)
+    .result_o(alu_result)
   );
 
   // Multiplier
