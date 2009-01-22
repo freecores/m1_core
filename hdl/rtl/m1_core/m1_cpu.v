@@ -98,6 +98,7 @@ module m1_cpu (
   reg[2:0] ex_mem_size;
   reg[31:0] ex_mem_store_value;
   reg[3:0] ex_mem_store_sel;                                         // Byte Selector on Stores
+  reg[31:0] ex_mem_destold;                                          // Old value for partial rewrite
   reg[4:0] ex_mem_destreg;
   reg ex_mem_desthi, ex_mem_destlo;
   reg[4:0] ex_mem_destsyscon;
@@ -814,7 +815,7 @@ module m1_cpu (
               id_ex_load <= 1;
               id_ex_store <= 0;
               id_ex_size <= `SIZE_LEFT;
-              id_ex_store_value <= 0;
+              id_ex_store_value <= GPR[if_id_rt];
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
@@ -898,7 +899,7 @@ module m1_cpu (
               id_ex_load <= 1;
               id_ex_store <= 0;
               id_ex_size <= `SIZE_RIGHT;
-              id_ex_store_value <= 0;
+              id_ex_store_value <= GPR[if_id_rt];
               id_ex_destreg <= if_id_rt;
               id_ex_desthi <= 0;
               id_ex_destlo <= 0;
@@ -1762,6 +1763,7 @@ module m1_cpu (
         ex_mem_load        <= id_ex_load;
         ex_mem_store       <= id_ex_store;
         ex_mem_size        <= id_ex_size;
+        ex_mem_destold     <= id_ex_store_value;	 
         ex_mem_destreg     <= id_ex_destreg;
         ex_mem_desthi      <= id_ex_desthi;
         ex_mem_destlo      <= id_ex_destlo;
@@ -1813,6 +1815,46 @@ module m1_cpu (
                   ex_mem_store_value <= {id_ex_store_value[7:0], {24'b0}};
                   ex_mem_store_sel <= 4'b1000;
                 end
+              endcase
+            end
+	    `SIZE_LEFT: begin
+              case(alu_result_i[1:0])
+                2'b00: begin
+                  ex_mem_store_value <= {24'b0, id_ex_store_value[31:24]};
+                  ex_mem_store_sel <= 4'b0001;
+		end
+                2'b01: begin
+                  ex_mem_store_value <= {16'b0, id_ex_store_value[31:16]};
+                  ex_mem_store_sel <= 4'b0011;
+		end
+                2'b10: begin
+                  ex_mem_store_value <= {8'b0, id_ex_store_value[31:8]};
+                  ex_mem_store_sel <= 4'b0111;
+		end
+                2'b11: begin
+                  ex_mem_store_value <= id_ex_store_value;
+                  ex_mem_store_sel <= 4'b1111;
+		end
+              endcase
+            end
+	    `SIZE_RIGHT: begin
+              case(alu_result_i[1:0])
+                2'b00: begin
+                  ex_mem_store_value <= id_ex_store_value;
+                  ex_mem_store_sel <= 4'b1111;
+		end
+                2'b01: begin
+                  ex_mem_store_value <= {id_ex_store_value[23:0], 8'b0};
+                  ex_mem_store_sel <= 4'b1110;
+		end
+                2'b10: begin
+                  ex_mem_store_value <= {id_ex_store_value[15:0], 16'b0};
+                  ex_mem_store_sel <= 4'b1100;
+		end
+                2'b11: begin
+                  ex_mem_store_value <= {id_ex_store_value[7:0], 24'b0};
+                  ex_mem_store_sel <= 4'b1000;
+		end
               endcase
             end
           endcase
@@ -1870,6 +1912,22 @@ module m1_cpu (
 		2'b10: mem_wb_value[31:0] <= {{24{dmem_data_i[23]}}, dmem_data_i[23:16]};
 		2'b11: mem_wb_value[31:0] <= {{24{dmem_data_i[31]}}, dmem_data_i[31:24]};		
 	      endcase	       
+	    end
+	    `SIZE_LEFT: begin
+	      case(ex_mem_aluout[1:0])
+		2'b00: mem_wb_value[31:0] <= {dmem_data_i[7:0],  ex_mem_destold[23:0]};
+		2'b01: mem_wb_value[31:0] <= {dmem_data_i[15:0], ex_mem_destold[15:0]};
+		2'b10: mem_wb_value[31:0] <= {dmem_data_i[23:0], ex_mem_destold[7:0]};
+		2'b11: mem_wb_value[31:0] <= dmem_data_i;
+	      endcase
+	    end
+	    `SIZE_RIGHT: begin
+	      case(ex_mem_aluout[1:0])
+		2'b00: mem_wb_value[31:0] <= dmem_data_i;
+		2'b01: mem_wb_value[31:0] <= {ex_mem_destold[31:24], dmem_data_i[31:8]};
+		2'b10: mem_wb_value[31:0] <= {ex_mem_destold[31:16], dmem_data_i[31:16]};
+		2'b11: mem_wb_value[31:0] <= {ex_mem_destold[31:8],  dmem_data_i[31:24]};
+	      endcase
 	    end
           endcase	    
 
