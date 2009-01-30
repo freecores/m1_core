@@ -3,24 +3,17 @@ Simply RISC M1 Core ("Mistral") TODO List
 
 Implementation
 --------------
-At the moment the CPU has no interrupt handling.
+At the moment the CPU has no exception nor external interrupt handling.
 
 
-ISA Functional Verification
----------------------------
-Several simulations have been performed by Simone Lunardo and Paolo Piscopo;
-the verification status for each instruction is as follows:
+Functional Verification
+-----------------------
+Several simulations have been performed by Fabio Motta, Simone Lunardo and Paolo Piscopo.
 
-- LOAD/STORE
-Only 32-bit LW/SW have been tested and they work.
-Other sizes are not working.
-Unaligned accesses are not implemented at all.
 
-- ALU I-TYPE, ALU R-TYPE, SHIFT, MULTIPLY-DIVIDE
-All tested and working.
-
-- JUMP/BRANCH
-Jump are working (J JAL JR JALR) including the delay slot.
-Equality branches (BEQ BNE) execute 2 delay slots rather than just 1.
-Disequality branches (BLEZ BGTZ BLTZ BGEZ) do not work yet.
+Open issues
+-----------
+While Jump are working (J JAL JR JALR) including the delay slot,
+equality branches (BEQ BNE) execute 2 delay slots rather than just 1
+and disequality branches (BLEZ BGTZ BLTZ BGEZ) do not work yet.
 
